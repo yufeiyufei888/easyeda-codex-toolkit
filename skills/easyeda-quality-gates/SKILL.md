@@ -1,87 +1,96 @@
 ---
 name: easyeda-quality-gates
-description: >-
-  Verify an EasyEDA schematic, PCB, or complete board before release. Use for
-  read-only design review, DRC/check/layout-lint interpretation, electrical
-  verification, PCB/DFM review, and before any authorized schematic or PCB
-  change is declared complete.
+description: EasyEDA/嘉立创EDA schematic/原理图 and PCB quality gates. Use for design or edits, read-only project study, or final electrical/DFM verification that needs modular planning, datasheet-backed calculations, placement/routing review, and DRC/check/lint triage; pair with the workspace easyeda-agent.
 ---
 
 # EasyEDA Quality Gates
 
-Use this skill with the selected `easyeda-agent` for live project data. For a
-normal engineering task, load the applicable schematic or PCB skill as well.
-Use `easyeda-api` only for extension, API, or source-format work.
+Use this skill as the quality and acceptance layer. Use the current workspace
+`easyeda-agent` as the operational source for CLI commands, connector behavior,
+library lookup, document access, and exports.
 
-## Authority and Evidence
+## Route The Task
 
-- Treat review, learning, checking, and diagnosis as read-only. Skill loading,
-  a live connection, and a passing checker never authorize project changes.
-- Identify the exact project, document, sheet, and board before any action.
-- For whole-board work, inspect the linked schematic first, then inspect the
-  PCB against that recovered intent.
-- Prefer typed design data; use native DRC/check/layout-lint next; use the
-  visible editor as corroborating evidence. Treat an automated finding as a
-  candidate until it is located and explained.
+Load only the references required by the active branch:
 
-## Gate 0 — Scope and Connection
+- Schematic creation, editing, or review: [schematic-quality.md](references/schematic-quality.md)
+- PCB creation, editing, or review: [pcb-quality.md](references/pcb-quality.md)
+- Learning or auditing an existing project: [read-only-audit.md](references/read-only-audit.md)
+- MCU development boards, USB, RF, or dense breakout boards:
+  [development-board-patterns.md](references/development-board-patterns.md)
+- Intelligent-vehicle or other dense contest mainboards:
+  [contest-control-board-patterns.md](references/contest-control-board-patterns.md)
+- NE555 circuits or contest tasks: [ne555-patterns.md](references/ne555-patterns.md)
 
-1. Confirm the authorized target and whether the request is review or a named
-   edit scope.
-2. Verify `easyeda daemon health`, the current EasyEDA window, connector,
-   active document type, and schematic/PCB capability.
-3. Record the initial read-only or dirty state. Do not open, save, sync, or
-   alter another project to obtain context.
+For a task spanning schematic and PCB, complete the schematic branch first, then
+the PCB branch. Apply every applicable branch before declaring completion.
 
-Stop when the target or permission is ambiguous.
+## Evidence Ladder
 
-## Gate 1 — Schematic Readiness
+Judge each gate in this order:
 
-Apply for schematic work or before PCB review:
+1. Authoritative design data: parts, pins, nets, primitives, layers, rules, and
+   schematic-to-PCB linkage.
+2. Native checks: EasyEDA DRC plus the relevant `check` and `layout-lint` output.
+3. Visual evidence: readable schematic zoom, physically correct PCB top/bottom
+   views, and 3D/mechanical inspection when geometry matters.
 
-- Confirm symbols, pin numbers, packages, power nets, network labels, ports,
-  and no-connect markers from design data.
-- Check power rails, decoupling, interface direction/pull-ups, protection,
-  voltage domains, critical enable/boot/reset pins, and component ratings
-  against the applicable datasheet.
-- Check readable module boundaries, signal and power flow, meaningful labels,
-  differential-pair naming, and unique references.
-- Run schematic DRC/check. Classify every error and warning as fixed,
-  accepted-with-rationale, false positive, or unresolved.
-- Before a PCB handoff, confirm packages, nets, differential pairs, net
-  classes, length groups, and the intended schematic-to-PCB update scope.
+Treat automated findings as candidates until the netlist, primitive geometry,
+physical side, and design intent agree. Classify each finding as confirmed,
+intentional/project-specific, checker limitation, or unresolved.
 
-Do not claim electrical correctness merely because DRC passes.
+## Step 1: Freeze Scope
 
-## Gate 2 — PCB Readiness
+Record the exact project, document or pages, requested deliverables, and whether
+the task is read-only or authorizes mutation. Keep reference projects and pages
+outside that list untouched.
 
-Apply after Gate 1 for PCB work:
+**Complete when:** the target and allowed actions are explicit, the active
+EasyEDA project/document matches them, and every planned action fits the granted
+authority.
 
-- Confirm board outline, holes, layers/stackup, fabrication limits, rules,
-  component placement, keepouts, and connectors against mechanical intent.
-- Check placement and routing from the schematic context: power loops and
-  decoupling, return paths and plane continuity, high-current width/copper,
-  sensitive analog routing, switching-node area, clock/crystal region,
-  differential pairs, length constraints, vias, and copper pours.
-- Check silkscreen, polarity, pin-one marks, exposed copper, board-edge
-  clearance, assembly accessibility, test/debug access, thermal relief, and
-  manufacturability.
-- Run PCB DRC/check/layout-lint. Rebuild any derived copper only when an
-  authorized change makes that necessary; rerun checks after that rebuild.
+## Step 2: Build The Design Contract
 
-## Gate 3 — Release Evidence
+Recover or define the power tree, functional modules, interfaces, major ICs,
+clocks, reset/programming paths, critical calculations, mechanical constraints,
+and expected page split. Resolve uncertain electrical facts from the exact
+manufacturer datasheet or application note.
 
-Report a gate table with evidence rather than a binary assurance:
+**Complete when:** every functional requirement maps to a schematic block or PCB
+constraint, every major rail and interface has a source and destination, and no
+unverified assumption is presented as final.
 
-| Gate | Result | Evidence | Open items |
-| --- | --- | --- | --- |
-| Scope and connection | pass / blocked | target, health, capabilities | permission or context gaps |
-| Schematic | pass / conditional / fail | DRC and inspected nets/components | classified findings |
-| PCB | pass / conditional / fail | DRC/lint and inspected geometry | classified findings |
-| Manufacturing | pass / conditional / fail | Gerber/BOM/assembly review if requested | missing exports or DFM risks |
+## Step 3: Close The Schematic Gate
 
-State the project/document, checks and result counts, findings with locations
-and severity, accepted exceptions with rationale, any unsatisfied gates, and
-whether the result was strictly read-only. Only say a board is ready for the
-requested release when every applicable gate is passed or the user explicitly
-accepts documented exceptions.
+Apply [schematic-quality.md](references/schematic-quality.md) and any conditional
+reference selected above. Work by functional module, then read back connectivity
+and run the evidence ladder.
+
+**Complete when:** every pin is connected or intentionally NC, calculated values
+meet their stated requirement, the authoritative net data has no unexplained
+short/open/mismatch, all check findings are classified, and every page passes
+readable visual QA including title-block metadata.
+
+## Step 4: Close The PCB Gate
+
+Confirm schematic linkage, then apply [pcb-quality.md](references/pcb-quality.md)
+and any conditional reference. Preserve the priority order: mechanical and
+safety constraints, critical current/signal loops, return paths, thermal needs,
+functional grouping, DFM, then cosmetics.
+
+**Complete when:** placement and routing are electrically and mechanically
+accounted for; critical nets, planes, pours, vias, keep-outs, and both physical
+sides have been inspected; authorized changes are followed by copper rebuild and
+a clean final verification loop; every remaining finding is classified.
+
+## Step 5: Close The Evidence
+
+For mutation work, read back every changed primitive and save only the verified
+checkpoint. For read-only work, preserve project content and state any final gate
+that would require mutation. Report the project/document identity, changes or
+read-only status, checks run, result counts, unresolved evidence, and artifact
+paths.
+
+**Complete when:** the report accounts for every requested deliverable and every
+finding, identifies the saved or unchanged state, and makes no completion claim
+stronger than the available evidence.

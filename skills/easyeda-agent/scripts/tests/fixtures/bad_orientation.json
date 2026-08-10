@@ -1,5 +1,5 @@
 {
-  "_intent": "clean_board with the +3V3 power flag rotated to 90 (body would point left, into the wire) instead of 180 (body up, post-2026-06-29 y-DOWN vertical fix). MUST fire exactly `orientation` and nothing else — this is the positive test for the rule the table validation protects.",
+  "_intent": "clean_board with the +3V3 power flag rotated to 90 (body would point left, into the wire) instead of canonical 180 (body up). MUST fire exactly `orientation` and nothing else — this is the positive test for the rule the table validation protects.",
   "parts": [
     {"pid": "u1", "type": "part", "designator": "U1", "x": 130, "y": 150,
      "pins": [

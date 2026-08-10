@@ -1,5 +1,5 @@
 {
-  "_intent": "Edited layout vs edit.base.json: f1 orientation fixed (rot 90->180, FIXED — body up is rot 180 post-2026-06-29 y-DOWN vertical fix). U2.IO still floating (PRE-EXISTING). New U3 + flag f3 dropped on U3's pin (NEW flag_on_pin + flag_no_wire). Expect: modified=[f1], added=[u3,f3], NEW=2, FIXED=1, PRE-EXISTING=2.",
+  "_intent": "Edited layout vs edit.base.json: f1 orientation fixed (rot 90->180, FIXED — canonical body-up rotation is 180). U2.IO still floating (PRE-EXISTING). New U3 + flag f3 dropped on U3's pin (NEW flag_on_pin + flag_no_wire). Expect: modified=[f1], added=[u3,f3], NEW=2, FIXED=1, PRE-EXISTING=2.",
   "parts": [
     {"pid": "u1", "type": "part", "designator": "U1", "x": 130, "y": 150,
      "pins": [

@@ -15,6 +15,7 @@ Two guards keep the linter's verdicts trustworthy:
     python3 tests/run.py            # check (exit 1 on any mismatch)
     python3 tests/run.py --update   # re-freeze goldens after an intended change
 """
+import importlib.util
 import json
 import os
 import re
@@ -87,6 +88,22 @@ def check_ts_consistency(failures):
 
     if not failures:
         print(f"{GREEN}✓{RESET} connector (actions.ts) facts match orientation.json")
+
+
+def check_bulk_connect_envelope(failures):
+    """Guard the installed helper against silently dropping enveloped sch findings."""
+    path = os.path.join(ROOT, 'bulk-connect.py')
+    spec = importlib.util.spec_from_file_location('bulk_connect', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    finding = {'type': 'floating-pin'}
+    enveloped = {'id': 'x', 'type': 'schematic.check',
+                 'result': {'summary': {'total': 1}, 'findings': [finding]}}
+    got = module.result_payload(enveloped)
+    if got.get('findings') != [finding]:
+        failures.append('bulk-connect: did not unwrap sch check result.findings')
+    else:
+        print(f"{GREEN}✓{RESET} bulk-connect parses enveloped sch check findings")
 
 
 def run_lint(path):
@@ -172,6 +189,7 @@ def main():
     failures = []
     check_orientation(failures)
     check_ts_consistency(failures)
+    check_bulk_connect_envelope(failures)
     check_fixtures(update, failures)
     check_diffs(update, failures)
     if update:

@@ -4,8 +4,8 @@
 The whole 12-entry rotation table is determined by four facts (see
 orientation.json): the +90° body cycle ``up → right → down → left`` and the
 body direction at rotation 0 for each family (power=down, ground=up, port=right).
-(2026-06-29: cycle/anchors fixed for the y-DOWN build — up/down were rendering
-flipped; left/right unchanged. See orientation.json _doc.)
+(2026-06-29: cycle/anchors re-calibrated from rendered flag bodies; this visual
+rotation mapping is independent of the schematic endpoint coordinate signs.)
 ``derive`` reconstructs the table; ``load_body_rotation`` reads the canonical
 spec next to this file. The lint check and the connector's connect_pin both
 derive from these same facts, so they can never drift — tests/run.py asserts it.

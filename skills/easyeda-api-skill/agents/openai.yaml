@@ -1,0 +1,4 @@
+interface:
+  display_name: "EasyEDA API"
+  short_description: "Build and debug EasyEDA extensions"
+  default_prompt: "Use $easyeda-api to resolve the exact eda.* API, execute a minimal verified call, and report the readback evidence."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "EasyEDA Quality Gates"
+  short_description: "Verify EasyEDA schematics and PCB designs"
+  default_prompt: "Use $easyeda-quality-gates to plan or audit this EasyEDA schematic/PCB and close every applicable evidence gate."
