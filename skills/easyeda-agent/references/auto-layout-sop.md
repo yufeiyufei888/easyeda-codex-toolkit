@@ -1,117 +1,40 @@
-# 原理图高质量布局 SOP（CLI）
+# 原理图布局 — CLI 能力 + 硬约束(不是规则书)
 
-> 本文只写可重复执行的 CLI 流程与硬坑。分区、间距、方向等视觉约定读
-> [`schematic-layout-conventions.md`](./schematic-layout-conventions.md)；整板阶段门读
-> [`design-flow.md`](./design-flow.md)。
+> **布局智能交给 AI 自己**(看 `getAll` 坐标 + 截图判断间距/线长/对齐),本文不堆布局规则,
+> 只写**工具怎么用 + 几条绕不过的硬坑**。需要分区/间距等设计约定时查
+> [`schematic-layout-conventions.md`](./schematic-layout-conventions.md)(参考,不是必遵的规则书);
+> 大板动手前可选过 [`design-pre-analysis.md`](./design-pre-analysis.md) 出个布局计划。
 
-## 核心原则
+## 一条核心原则(嘉立创标准工程「实战派ESP32-S3」实测)
+**flag 只给电源/地轨;信号全是真·本地正交线;去耦贴 IC;多页按功能分。**
+(实测:flag 100% 是 GND/3V3/各电源域 ≈0.4/件;信号全是 `sch_PrimitiveWire`;去耦距 IC 90–230u。)
+其余间距/分区/对齐 AI 按数据+截图自调。
 
-**按功能分页、按模块成簇、模块内短正交线、跨模块/跨页用命名 netport、电源地用
-netflag、去耦贴 IC、框和文字按页保存。**
+## 自调闭环(数据驱动,现在就能用)
+放 → `sch list`/`getAll` 读回坐标 + union-find 连通 → 判间距/线长/连通 → `sch modify` 挪 → 再读。
+- **截图**:`sch snapshot` → 取 `<cwd>/.easyeda/artifacts/` 最新 png(给人看的视觉终检)。
+- ⚠️ **API 改完 EDA 画布不自动重绘** → 截图 / `view fit` 都返回旧帧(连 fit 框选都是旧的)。
+  **验证状态只信数据(`getAll`)**;要看图先在 EDA 里**碰一下那页**(滚动/点选)触发重绘再截。
+- ⚠️ wire 的 `getState_Net` 不可靠(常空);连通用 union-find(`getState_Line` 按**每 4 数 = 1 段**解析,别当连续折线)。
 
-- 模块内部相邻引脚优先真实正交线；长距离、跨模块和跨页信号使用命名
-  netport 短桩，避免长线穿越器件或与异网共线合并。
-- netflag 只用于电源/地轨；普通信号不要伪装成电源 flag。
-- 未使用引脚显式 `sch no-connect`，不要造零长 wire。
-- 截图只做视觉终检；正确性以 `sch read/check/bridge-check/layout-lint` 为准。
+## 画线 / flag / 去耦(CLI 级硬规则,实测)
+- **信号 = 真本地正交线**:端点落引脚坐标 = 连通;不对齐走 L `[x1,y1, x2,y1, x2,y2]`(EDA 自动拆 2 正交段)。
+  📐 **`--points` 两种写法都行**:嵌套 `[[x,y],[x,y],…]` 与扁平 `[x1,y1,x2,y2,…]` 均接受——连接器内部统一归一化成扁平 `number[]`(EDA 底层只认扁平)后再 `create`,不用再为格式 `call` 绕过(issue #5)。
+  ⚠️ **线段不能穿过别的引脚**——EDA 会在穿过处**截断并连上它**(沿一排同 y/x 引脚走线必中招)→ 走无引脚通道。
+  ⚠️ 多脚网用 **pin→pin 链式**(每段端点锚在引脚),别"星点连到空中 junction"(合并时丢无锚点 junction)。
+- **flag 只给电源/地轨**:`connect_pin direction=`(自动定向 + 2026-06 build 取反补偿);信号一律走线,不 flag。
+- **去耦**:读引脚 name 找 VCC/GND → 电容贴 VCC 焊盘 ~100u → `VCC→cap` 短线(无引脚通道)→ cap 另一脚 GND flag。
 
-## 先判断页面类型
+## 图纸 / 多页(工具坑,实测)
+- **先有图纸,默认 A4**:`sch sheet-geometry --json` 必须能读到 `componentType:"sheet"` 的实测 bbox,再进入生产级 place/wire。若页面显示“无图纸”或 sheet bbox 缺失,这是**阻塞项**:让用户在 EasyEDA 选择/创建默认 A4 图纸,不要用 union bbox/provisional title block 继续落子。
+- **纸张改不大**:`titleblock.modify` 写操作是坏的(EDA_CALL_FAILED,连文本字段都失败)→ 默认 **A4**(以 `sch sheet-geometry` 实测 bbox 为准;常见约 1170×825/1188×840 一类比例),
+  放不下就**多页**,别赌放大单页。坐标落界内、避开右下角明细表;放完断言全在 sheet bbox 内。
+- **分页先于摆件**:按模块粗估每页容量。经验门槛:一页 A4 优先放 1 个主 IC/模块簇 + 2–4 个小外围簇;若超过 ~20–30 个可见器件、或任意两组之间无法保留 40–80 units 通道,拆页。跨页用同名 net port 表达连接。
+- **多页交错执行**:`doc switch` 能切页;`page-new` 把新页设为活动页;`getAll` 按活动页取。
+  → 在当前页 place+wire,然后**每 `page-new` 一页就立刻**在它上面 place+wire(别先全建页再统一布线 = 全堆最后一页);跨页用 `net_port` 同名连。
+- **清页前先存预置件的 `{libraryUuid,deviceUuid}`**(或用 MPN 重 `lib search` 搜回),否则删了找不回
+  (`design.json` 里 onboard 件 `deviceUuid=null`)。
+- `sch page-delete` 用 **`--page`**(不是 `--uuid`)。
 
-### 新建或尚未布线的页面
-
-1. `easyeda sch sheet-geometry --json --doc <page>`：必须有真实 sheet bbox。
-2. 按功能拆页并生成 module spec；`easyeda sch zones set --spec <spec>` 持久化
-   `modules[].page/zone/parts`。
-3. 放置全部器件并读回真实 bbox/pins。优先 `sch block-apply`；其次在无
-   wire/bus/marker 的页面运行 `sch autolayout --engine template --dry-run`，确认后
-   `--apply --doc <page>`。
-4. 每页通过 `sch layout-lint --strict --doc <page>` 后才布线。
-5. 模块内部画短正交线；电源/地/netport 短桩优先用 `sch autoconnect`。
-6. 逐页完成下方“功能框 + 文字标注”和“最终验证门”。
-
-### 已连线、待整理的页面
-
-**禁止运行 template autolayout；成品页也不要运行 official autolayout。** 移动器件而不
-同步导线会破坏连通，自动重连也不能代替设计意图。
-
-1. 固定目标页：所有读写命令都显式带 `--project` 与 `--doc <page>`。
-2. 保存基线：
-   - `sch read --doc <page>` 导出每个 `DESIGNATOR.pin → net`；
-   - 记录显式 NC 引脚；
-   - `sch check --json` 的 findings 从 `result.findings` 读取；
-   - 保存当前 `sch bridge-check --json` 与 `sch layout-lint --json` 报告。
-   - `sch read` 与 `sch list` 默认直接输出结构化 JSON，二者都没有 `--json` flag；
-     只有 `sch check`、`bridge-check`、`layout-lint`、`zone-plan` 等命令显式使用
-     `--json`。
-3. 清理旧的 agent 功能框时只用 `sch zone-draw --clear --doc <page>`；不要按图元类型
-   批量删除用户文字/图形。
-4. 按模块小批移动：
-   - 整簇优先 `sch group-move`，保持器件、局部线和 marker 的相对关系；
-   - 单件用 `sch modify`，成排用 `sch align`/`sch distribute`；
-   - 需要断开时用 `sch disconnect`，处理返回的 `alsoDisconnectedPins[]` 后逐脚重连。
-5. 每批修改后立即 `sch read` 对照黄金表；任何 pin→net、NC 集合变化都先修复，不带病
-   进入下一批。每个通过的批次显式 `sch save`。
-6. 全页完成后运行最终验证门；只有拓扑完全一致才可宣布“只是布局变化”。
-
-## 功能框 + 文字标注（逐页）
-
-先认领，再规划，再画：
-
-```bash
-easyeda sch zones set --spec s0.json --project <project>
-easyeda sch zone-plan --json --doc <page> --project <project>
-easyeda sch zone-draw --mode partition --font-size 22 --doc <page> --project <project>
-```
-
-`zone-plan` 的 `sheetOverflow`、`partitionOverlap`、`titleBlockHits`、
-`moduleOutsideZone`、`labelCollisions` 必须全为 0 才落笔。多页逐页运行，绝不复用前台
-页状态。`zone-draw` 的 rectangle/text ID 按 document UUID 记录；重画/清除只影响该页，
-且成功必须返回 `schematic.save(saved:true)`。
-
-## 画线与短桩硬规则
-
-- 真实导线只走水平/垂直；不对齐用 L 路径
-  `[x1,y1, x2,y1, x2,y2]`。
-- 导线不得穿过无关引脚；EasyEDA 会在经过点截断并连接。
-- 多脚网用 pin→pin 链式或命名 netport，不要把多条线汇到无锚点的空中 junction。
-- 电源/地用 `sch connect`/`sch autoconnect` 生成“pin→非零短线→flag”，禁止 flag
-  与 pin 坐标重合。
-- 批量页面内部信号优先命名 netport 短桩；不要画贯穿整页的长线。
-- 去耦先读 VCC/GND pin，再把电容放到 VCC 附近，以极短线连接，另一端接 GND。
-
-## 多页和长流水线
-
-- `doc switch` 返回不代表数据已稳定。读操作用 `sch read --page <page>`；所有 mutation
-  用全局 `--doc <page>`，让 CLI 切页、确认当前文档并 fail closed。
-- 每批重新读取 primitive ID；不要跨页复用 ID 或依赖隐式活动页。
-- 超过约 50 次 mutation 时使用 typed `easyeda` action、`easyeda apply`、
-  `scripts/bulk-place.py` 或 `scripts/bulk-connect.py` 分批执行并增量保存。
-- 只有 typed action 缺失且用户明确接受时，才把 `debug.exec_js` 当临时调试逃生口；
-  不把 raw JavaScript 写进生产 SOP。
-
-## 数据与截图闭环
-
-布局闭环：
-
-`sch list/read → layout-lint --strict → modify/group-move → readback → save`
-
-截图闭环：
-
-`sch snapshot --previous-sha256 <上一帧 sha>`。若仍返回 `stale:true`，只报告截图不可用，
-不要据此否定数据结果。
-
-`sch check --json` 使用统一信封
-`{id,type,version,ok,result}`，findings 在 `result.findings`。不要按旧版裸对象解析。
-
-## 最终验证门（每页）
-
-1. `easyeda sch layout-lint --strict --doc <page>`：0 overlap、0 pin-coincidence、
-   0 strict WARN，且几何/zone 可证明。
-2. `easyeda sch drc --doc <page>`：fatal/error 为 0；聚合 WARN 审阅并报告。
-3. `easyeda sch check --strict --doc <page>`：结构与 marker findings 为 0。
-4. `easyeda sch bridge-check --doc <page>`：0 bridge；orphan stub/flag 也必须解释或清理。
-5. `easyeda sch read --doc <page>`：与设计 spec 或整理前黄金
-   `DESIGNATOR.pin → net`、显式 NC 集合逐项一致。
-6. `easyeda sch save --doc <page>` 明确返回 `saved:true`。
-
-任何一门失败都回到布局/布线阶段修复，不用截图“看起来正常”替代门禁。
+## 抗 churn(>~50 mutation,实测必备)
+显式 `--project`;`debug.exec_js` 批量多图元/次、每批切 <~20s(长调用被心跳杀);每批**重试 + 增量 `sch save`**(无 undo,半落未存=不可恢复);每批开头重拉新 pid。

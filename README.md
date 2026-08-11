@@ -1,63 +1,102 @@
 # EasyEDA Codex Toolkit
 
-嘉立创EDA（EasyEDA）相关的 Codex skills、连接记忆与设计参考备份。内容覆盖电子方案分析、原理图绘制与审查、PCB 布局布线、质量门禁、客户端连接、BOM/网表和扩展 API。
+面向嘉立创EDA（EasyEDA）硬件工作的 Codex 技能工具箱，覆盖电子方案、原理图、PCB、实时工程操作、质量验收、自动化维护与扩展 API。
 
-> 仓库默认按私有资料库创建。这里包含机器相关的连接经验；如需公开，请先复核路径、版本与第三方许可。
+当前版本：**v3.0.0**
 
-## 内容导航
+仓库状态：公开
 
-| 路径 | 定位 | 主要内容 |
+定位：工作流、审查规则与操作参考；不是嘉立创EDA官方产品，也不替代数据手册、板厂规则或实板验证。
+
+## 一眼看懂
+
+```text
+电子方案分析 → 原理图设计/审查 → PCB设计/审查
+                       │              │
+                       └── easyeda-agent：读取或执行当前工程操作
+                                      │
+                         easyeda-quality-gates：审计与最终验收
+
+easyeda-agent-community-maintenance：安装、升级、连接故障与社区维护
+easyeda-api-skill：扩展开发、eda.* API 与 Bridge
+```
+
+V3 的核心是把职责拆清楚：设计技能负责工程判断，`easyeda-agent` 只负责当前项目的实时操作，`easyeda-quality-gates` 负责证据和验收，社区包的安装升级与故障排查由独立维护技能处理。
+
+## 技能目录
+
+| Skill | 什么时候使用 | 不负责什么 |
 | --- | --- | --- |
-| [`skills/easyeda-agent`](skills/easyeda-agent/) | 社区 typed 自动化工作流 | 原理图/PCB 操作、设计流程、布局布线约定、DRC/lint、BOM 与器件选择脚本 |
-| [`skills/easyeda-api-skill`](skills/easyeda-api-skill/) | EasyEDA API 与 Bridge 参考 | API 索引、原理图/PCB 文档格式、扩展开发指南、WebSocket Bridge |
-| [`skills/电子方案分析`](skills/电子方案分析/) | 方案阶段 | 需求澄清、器件选型、系统框图、电源树、风险与成本评估；默认不改工程 |
-| [`skills/schematic-design-review`](skills/schematic-design-review/) | 原理图阶段 | 设计/审查分流、器件与网络检查、原理图 DRC、PCB 转换准备 |
-| [`skills/easyeda-pcb`](skills/easyeda-pcb/) | PCB 阶段 | 布局、布线、差分对、铺铜、DRC、DFM、Gerber/BOM/装配输出 |
-| [`skills/easyeda-quality-gates`](skills/easyeda-quality-gates/) | 验证门禁 | 先原理图后 PCB 的分阶段检查、DRC/check/layout-lint 证据与发布结论 |
-| [`memory/easyeda-connection-workflow.md`](memory/easyeda-connection-workflow.md) | 本机连接记忆 | daemon、客户端、连接器、重连步骤、成功判定与故障处理 |
-| [`memory/easyeda-skill-routing.md`](memory/easyeda-skill-routing.md) | 技能路由记忆 | 何时选用方案、原理图、PCB、Agent、API 与质量门禁技能 |
-| [`memory/easyeda-read-only-learning.md`](memory/easyeda-read-only-learning.md) | 只读学习记忆 | 工程学习/审查的边界、证据标准与输出结构 |
-| [`docs/verified-connection.md`](docs/verified-connection.md) | 本次验证快照 | 已验证的版本、端口、能力和当前文档状态 |
+| [`电子方案分析`](skills/电子方案分析/) | 实体硬件需求、系统框图、电源树、接口预算、主控/关键器件初选、成本和风险 | 具体原理图、PCB Layout、纯软件项目 |
+| [`schematic-design-review`](skills/schematic-design-review/) | 具体电路计算、器件外围、引脚/网络/NC、原理图设计与审查、转PCB前检查 | 产品总体架构、PCB布线 |
+| [`easyeda-pcb`](skills/easyeda-pcb/) | 板框、叠层、布局布线、回流、电源/热、高速、DRC、DFM和制造输出 | 原理图电路判断、客户端连接 |
+| [`easyeda-agent`](skills/easyeda-agent/) | 连接并识别当前EasyEDA工程，执行获准的读取、放置、连线、布局、布线、检查、保存和导出 | 安装升级、版本兼容和电路理论 |
+| [`easyeda-quality-gates`](skills/easyeda-quality-gates/) | 指定EasyEDA工程的只读学习、审计、DRC结果分类和最终验收 | 连接客户端或直接执行CLI操作 |
+| [`easyeda-agent-community-maintenance`](skills/easyeda-agent-community-maintenance/) | 社区CLI/daemon/connector安装升级、版本或动作故障、插件市场差异、块库维护 | 普通工程设计与日常操作 |
+| [`easyeda-api-skill`](skills/easyeda-api-skill/) | `eda.*` API查询、扩展开发、源文档格式、库对象与WebSocket Bridge | 常规原理图/PCB工程判断 |
 
-## 能力范围
+## V3.0.0 更新
 
-- 连接与重连嘉立创EDA V3，验证 daemon、connector 与 typed API 通道。
-- 方案：从需求、选型、系统架构和风险评估进入设计。
-- 原理图：器件放置、连线、网络标识、分页规划、规则检查与 PCB 转换准备。
-- PCB：同步、器件布局、走线、铺铜、层/网络检查、DRC、layout lint 与 DFM。
-- 质量门禁：将原理图、PCB 与制造检查的结果分类为通过、有条件通过或未通过。
-- 器件与制造：LCSC/JLC 器件选择、BOM 丰富、网表和制造资料参考。
-- 扩展开发：EasyEDA API 类、枚举、接口、文档源格式和 Bridge 调试。
+- 新增 `easyeda-agent-community-maintenance`，将安装、升级、连接故障和社区块库维护从项目操作中独立出来。
+- 精简 `easyeda-agent`，明确它只承担当前工作区内的实时、可观察操作。
+- 更新 `电子方案分析`、`schematic-design-review` 和 `easyeda-pcb` 的触发边界，减少纯软件任务、笼统“设计/检查”或跨阶段问题的误触发。
+- 更新经典项目、电源拓扑和常见电路参考；历史经验仅用于生成候选，最终结论必须回到准确料号、当前官方资料和实物约束。
+- 更新 `easyeda-quality-gates` 的路由关系，使设计判断、工具执行与验收证据相互独立。
 
-## 使用原则
+详细记录见 [`CHANGELOG.md`](CHANGELOG.md)。
 
-1. 按“方案分析 → 原理图 → PCB → 质量门禁”选择最小适用技能集。
-2. 任何设计操作前先检查连接健康、当前工程与文档类型。
-3. 修改前先读取工程、页面、元件、引脚、网络、层和规则；审查和学习默认只读。
-4. PCB 与原理图坐标单位不同；API 参数、枚举和返回类型必须查文档，不猜值。
-5. 以 `check`、`drc`、`layout-lint` 等数据结果判断正确性，截图只作为视觉验证。
+## 推荐使用方式
 
-## 安装到 Codex
+1. 还没有具体电路时，从 `电子方案分析` 开始。
+2. 进入具体芯片、外围值和网络连接后，切换到 `schematic-design-review`。
+3. 原理图和封装闭环后，使用 `easyeda-pcb`。
+4. 需要读写当前嘉立创EDA工程时，再叠加工作区 `easyeda-agent`。
+5. 只读学习、完整审计或交付验收时，再叠加 `easyeda-quality-gates`。
+6. 只有明确处理安装、升级、连接/版本故障或社区块库时，才使用 `easyeda-agent-community-maintenance`。
 
-将需要的 skill 目录复制到个人 Codex skills 目录，并保持目录名不变：
+技能只规定工作方法，不自动授予修改工程的权限。学习、检查、审查和解释默认只读；修改、保存、批量删除、重新布线或发布外部内容必须有明确授权。
+
+## 安装
+
+按需复制，不必一次安装全部。用户级技能可放入：
 
 ```powershell
-Copy-Item -Recurse .\skills\easyeda-agent "$env:USERPROFILE\.codex\skills\easyeda-agent"
-Copy-Item -Recurse .\skills\easyeda-api-skill "$env:USERPROFILE\.codex\skills\easyeda-api-skill"
 Copy-Item -Recurse .\skills\电子方案分析 "$env:USERPROFILE\.codex\skills\电子方案分析"
 Copy-Item -Recurse .\skills\schematic-design-review "$env:USERPROFILE\.codex\skills\schematic-design-review"
 Copy-Item -Recurse .\skills\easyeda-pcb "$env:USERPROFILE\.codex\skills\easyeda-pcb"
 Copy-Item -Recurse .\skills\easyeda-quality-gates "$env:USERPROFILE\.codex\skills\easyeda-quality-gates"
+Copy-Item -Recurse .\skills\easyeda-agent-community-maintenance "$env:USERPROFILE\.codex\skills\easyeda-agent-community-maintenance"
+Copy-Item -Recurse .\skills\easyeda-api-skill "$env:USERPROFILE\.codex\skills\easyeda-api-skill"
 ```
 
-`easyeda-api-skill` 的 Bridge 依赖不随仓库提交；需要时在该目录运行 `npm install`。
+实时操作技能建议放在具体EasyEDA工作区内，让项目边界更清楚：
 
-## 来源与许可说明
+```powershell
+Copy-Item -Recurse .\skills\easyeda-agent "<你的EasyEDA工作区>\.codex\skills\easyeda-agent"
+```
 
-- `easyeda-agent` 是社区工作流，skill 内标注来源：<https://github.com/zhoushoujianwork/easyeda-agent>。
-- `easyeda-api-skill` 的 `SKILL.md` 元数据标注 MIT，作者为 JLCEDA；本仓库保留其原始元数据与文档。
-- 根目录不对所有第三方内容统一重新授权；公开分发前应按各来源许可复核。
+`easyeda-agent` 依赖社区CLI、daemon和Connector，仓库内不捆绑这些可执行组件。`easyeda-api-skill` 的Bridge依赖也不随仓库提交；如确实进行扩展开发，再按该技能说明安装依赖。
 
-## 2026-07-18 更新说明
+## 验证原则
 
-这是基于原有连接与 API 资料完善的第二版：新增电子方案分析、原理图审查、PCB 设计与质量门禁四个阶段的资料，并补充只读审查和技能路由记忆。`easyeda-quality-gates` 由既有工作流规则整理为独立 Skill，用于把检查结果和发布结论建立在可复核证据上。
+- 操作前确认准确工程、文档、页面和类型；连接健康不等于已经访问目标工程。
+- 修改前先读取元件、引脚、网络、层、板框和规则，优先使用typed action。
+- 跨原理图和PCB的任务先关闭原理图门，再进入PCB门。
+- 结论按“权威设计数据 → 原生DRC/check/layout-lint → 正确视角的视觉证据”建立。
+- 静态检查、DRC和截图不能替代实际制板、焊接、上电、测量与环境测试。
+
+## 记忆与文档
+
+| 路径 | 内容 |
+| --- | --- |
+| [`memory/easyeda-connection-workflow.md`](memory/easyeda-connection-workflow.md) | daemon、客户端、Connector、重连和成功判定经验 |
+| [`memory/easyeda-skill-routing.md`](memory/easyeda-skill-routing.md) | V3技能职责与组合方式 |
+| [`memory/easyeda-read-only-learning.md`](memory/easyeda-read-only-learning.md) | 只读学习、审查边界和证据结构 |
+| [`docs/verified-connection.md`](docs/verified-connection.md) | 一次已验证连接快照；版本和状态可能随时间变化 |
+
+## 来源与许可
+
+- `easyeda-agent` 及其社区维护资料基于 [`zhoushoujianwork/easyeda-agent`](https://github.com/zhoushoujianwork/easyeda-agent) 的工作流与参考内容。
+- `easyeda-api-skill` 的元数据标注 MIT、作者为 JLCEDA；仓库保留其来源信息。
+- 本仓库不对全部第三方内容统一重新授权；复用或再分发时应分别检查来源文件中的许可和上游条款。
+- 连接记忆与验证快照只描述特定环境下的经验，使用前应重新验证当前版本、端口、能力和目标工程。

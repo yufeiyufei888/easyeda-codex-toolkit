@@ -77,27 +77,21 @@ rip-up/clear 等破坏性步骤——整册回放前先 `--dry-run` 看计划,�
 - `schematic.wire.create` — 创建导线折线
 - `schematic.netflag.create` — 创建电源/地/网络端口/短路 flag
 - `schematic.power.connect_pin` — 复合操作：从 pin 拉导线 + 在末端放 flag（防止 flag-on-pin DRC fatal）
-- `schematic.pin.disconnect` — `connect_pin` 的逆操作：把某 pin 的 stub 导线**连同**末端 netflag/netport 一并删除，避免只删 flag 留下孤儿 stub（EasyEDA 会给残留 wire 分配 `$3N…` 自动网名，`sch check` 现已能识别报 WARN）。按 `--pin U1:5`、`pinX`/`pinY` 坐标(`sch autoconnect --replace` 换网时用)或 `--flag-id`/`--wire-id` 定位。**合并树感知(0.15.1/#137)**：定位到的线可能是 EasyEDA 合并后的长树——flag 搜索覆盖**全折线（顶点+中段）**一并删除失宿 flag，且返回 `alsoDisconnectedPins[]` 列出因删线被连带断开的其它 pin——**该字段非空必须逐个重连**（`sch autoconnect`），否则邻居 pin 静默悬空。CLI：`easyeda sch disconnect --pin U1:5`
-- `schematic.pin.set_no_connect` — 给引脚打/清「非连接标识」(NC, X 标记)，告诉 DRC 该脚是故意悬空。按 `--designator` + `--pin`（可多个）定位；`--clear` 清除。底层必须走器件实例 `component.getAllPins()`，每脚 `setState_NoConnected(...)` 后 `await pin.done()` 才真正落到画布，再用新实例回读验证。CLI：`easyeda sch no-connect --designator U1 --pin 23,24`
-- `schematic.rebind.footprint` — 换封装（五步绑定法）。`modify` 改不了已放置件的封装引用，故走 `lib_Device.modify → delete → create → 恢复位号/坐标/属性`；导入器件 `libraryUuid` 为空时先在工程库反查补齐。按封装名精确匹配（同名多命中或未命中会报错，可用 `--footprint-uuid` 直连）。**重建会换新 primitiveId，导线可能需重连——务必跑 `sch drc`/`sch check` 复核连通性。** CLI：`easyeda sch rebind-footprint --id <primitiveId> --footprint <name>`
-- `schematic.rebind.symbol` — 换符号，机制同上（五步绑定法）。CLI：`easyeda sch rebind-symbol --id <primitiveId> --symbol <name>`
-- `schematic.save` — 保存原理图。既定流程中的阶段过门后必须显式保存并核对
-  `saved:true`；只有用户要求逐步确认时才在保存前停下
+- `schematic.pin.set_no_connect` — 给引脚打/清「非连接标识」(NC, X 标记)，告诉 DRC 该脚是故意悬空。按 `--designator` + `--pin`（可多个）定位；`--clear` 清除。CLI：`easyeda sch no-connect --designator U1 --pin 23,24`
+- `schematic.save` — 保存原理图（需确认）
 
 ## Library
 
-- `schematic.library.search` — 自由文本搜索立创/EasyEDA 器件库，返回 libraryUuid + uuid。当 `query` 为纯 LCSC C 号（`^C\d+$`）时自动切换为精确模式，仅保留 `lcsc`/`supplierId` 严格相等的条目；无精确命中则报错。传 `allowFuzzy`（CLI `--allow-fuzzy`）可保留原模糊排序结果
+- `schematic.library.search` — 自由文本搜索立创/EasyEDA 器件库，返回 libraryUuid + uuid
 
 ## Verify & Export
 
 - `schematic.drc.check` — 调官方 `eda.sch_Drc.check` 作为 SDK DRC 门。当前 EasyEDA build 可能只返回 boolean/聚合结果,即使 `includeVerboseError=true` 也不保证有逐条 UI warning；CLI: `easyeda sch drc [--json]`。**不要单靠它宣称“官方 UI DRC 干净”**。
-- `schematic.check` — 我们的逐条重建检查:从 primitives + 官方 `sch_ManufactureData.getNetlistFile()` 交叉校验，覆盖悬空脚、导线交叉/穿脚、网络名不一致、零长/悬挂线及 duplicate/titleblock/marker overlap。`--json` 是 `{id,type,version,ok,result}` 信封，findings 位于 `result.findings`。CLI: `easyeda sch check [--json] [--strict]`。
-- `schematic.bridgeCheck` — 线树粒度检查 `wire-bridge`、orphan stub/flag，补 `sch check` 逐 wire 视角的盲区。CLI: `easyeda sch bridge-check [--json]`。
-- `schematic.read` — 一次读取 components、pin→net、nets、floating pins 与 check；新设计对照 spec，既有原理图重构前后对照黄金 pin→net/NC 集合。CLI: `easyeda sch read [--page <page>]`。
-- `schematic.export.netlist` — 导出网表为 artifact。底层必须走官方推荐的 `eda.sch_ManufactureData.getNetlistFile(fileName, netlistType)` 并读取返回的 `File`;不要使用已废弃的 `eda.sch_Netlist.getNetlist()`。官方文档标注 `getNetlist()` obsolete 且建议替代为 `getNetlistFile()`,并且 upstream issue [easyeda/pro-api-sdk#30](https://github.com/easyeda/pro-api-sdk/issues/30) 已复现它在含悬空引脚的原理图上可能无限卡死。CLI: `easyeda sch netlist`
+- `schematic.check` — 我们的逐条重建检查:从 primitives + 官方 `sch_ManufactureData.getNetlistFile()` 交叉校验,报告 net-marker/wire-name mismatch、multi-net wire、floating-pin、wire-crossing、wire-over-pin。CLI: `easyeda sch check [--json] [--strict]`。
+- `schematic.export.netlist` — 导出网表为 artifact
 - `schematic.export.bom` — 导出 BOM（csv 或 xlsx）为 artifact。CLI `easyeda bom export --type csv` **默认在导出后就地补全 LCSC C 号**（按 Manufacturer Part 关联 `standard-parts.json`，把 `Supplier Part` 从 `<MPN>.1` 改写为可下单的 C 号）；`--enrich=false` 关闭，xlsx 不补全（二进制）。补全是 best-effort（缺 python3/脚本只告警、导出仍成功）。脚本自动解析顺序：`--script` > `$EASYEDA_SKILLS_DIR/easyeda-agent/scripts/bom-enrich.py` > 二进制/工作目录向上找 `skills/` > PATH；安装版二进制在 `/usr/local/bin` 时设 `EASYEDA_SKILLS_DIR` 最稳。
 
-## PCB 基础上下文（非穷举）
+## PCB（Phase 2，只读）
 
 - `pcb.documents.list` — 工程内所有 PCB 文档（uuid + name）
 - `pcb.components.list` — PCB 上的封装/器件（可含 pads）
@@ -122,5 +116,6 @@ rip-up/clear 等破坏性步骤——整册回放前先 `--dry-run` 看计划,�
 - `schematic.component.delete`
 - `schematic.page.delete`（删除图页，无 undo）
 - `board.delete`（删除组合/板子，无 undo）
+- `schematic.save`（未明确要求保存时）
 - 生成的多步 mutation 计划
 - `debug.exec_js`（任何情况）

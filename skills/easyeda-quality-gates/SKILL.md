@@ -1,6 +1,7 @@
 ---
 name: easyeda-quality-gates
-description: EasyEDA/嘉立创EDA schematic/原理图 and PCB quality gates. Use for design or edits, read-only project study, or final electrical/DFM verification that needs modular planning, datasheet-backed calculations, placement/routing review, and DRC/check/lint triage; pair with the workspace easyeda-agent.
+description: >-
+  EasyEDA/嘉立创EDA source-project quality gates and acceptance evidence. Use only for read-only study, audit, or review of a named schematic/原理图 or PCB; for final verification after actual design edits; or to classify DRC/check/layout-lint findings. It owns scope freeze, datasheet-backed criteria, visual/electrical/DFM closure, and completion claims. It does not connect to EasyEDA, execute CLI actions, or answer standalone circuit/PCB theory; pair it with the workspace easyeda-agent for live projects.
 ---
 
 # EasyEDA Quality Gates
@@ -8,6 +9,11 @@ description: EasyEDA/嘉立创EDA schematic/原理图 and PCB quality gates. Use
 Use this skill as the quality and acceptance layer. Use the current workspace
 `easyeda-agent` as the operational source for CLI commands, connector behavior,
 library lookup, document access, and exports.
+
+Do not use this skill as a second design manual. Circuit design belongs to
+`schematic-design-review`, PCB engineering belongs to `easyeda-pcb`, and early
+hardware architecture belongs to `电子方案分析`. Load this skill alongside those
+only when an EasyEDA source project needs an auditable acceptance loop.
 
 ## Route The Task
 

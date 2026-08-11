@@ -1,0 +1,6 @@
+interface:
+  display_name: "EasyEDA Agent Community Maintenance"
+  short_description: "Maintain and troubleshoot community easyeda-agent"
+  default_prompt: "Use $easyeda-agent-community-maintenance to diagnose or maintain the community easyeda-agent toolchain."
+policy:
+  allow_implicit_invocation: false

@@ -5,19 +5,10 @@ When an AI agent (via `easyeda-agent`) generates or modifies a schematic, it mus
 > **自动批量实现** 一整张网表时,这些规则的执行**次序**见 [`auto-layout-sop.md`](./auto-layout-sop.md)
 > (图纸自适应 → 主器件分区 → 辅助件就近 → 微调)——它把下面的分区/间距/去耦/朝向串成机器可执行的 SOP。
 
-> **本文导航(§)**:0 坐标系/单位 · 1 分区(Zone Map)· 2 模块间距 · 3 Wire 长度/走线约定 ·
-> 4 命名约定 · 5 Designator 前缀 · 6 去耦电容规则 · 7 真实参考 motobox2026 · 8 真实参考 ESP32S3R8N8 ·
-> 9 自动化布局执行步骤 · 10 边界/开放问题 · 11 图纸边界/标题栏 keep-out。
-
 ## 0. 坐标系与单位
 
-- EasyEDA Pro 原理图原生坐标单位（raw/canvas unit）= `0.01 inch` = `0.254 mm`；
-  常用 100 mil 网格的 1 grid step = 10 raw units。CLI 的坐标参数使用 raw unit；
-  明确标注为 `mm` 的距离参数（例如 `sch layout-lint --min-gap`）会在边界换算，
-  `2.54 mm = 10 raw units`。
-- 器件 anchor 的硬连接网格为 **5 raw units**：`x % 5 == 0 && y % 5 == 0`；
-  `connect_pin` / netflag 会吸附到该网格，偏离会制造斜短桩或悬空。整页排版优先使用
-  10 raw units（100 mil）节拍获得更整齐的视觉，但不得把合法的 odd-5 引脚强拉到 10 格。
+- EasyEDA Pro 原理图网格单位 = `0.01 inch`（1 grid step = 10 raw units）。
+- 所有坐标必须**对齐网格**（10 的倍数）。`x % 10 == 0 && y % 10 == 0`。
 - 生产级布局必须先有可读 sheet primitive;默认选择/保留 A4。无图纸时不得用坐标外扩或已有器件 union bbox 代替图纸。
 - A 系列图纸尺寸以 `easyeda sch sheet-geometry` 的实测 bbox 为准;不同 EasyEDA build 的 A4 可能约 `1170 × 825` / `1188 × 840` 等同类比例。不要硬编码单一尺寸。
 - 元件中心 `(x, y)` = 元件参考点；元件 pin 在中心周围。
@@ -48,6 +39,10 @@ A3 / 类 A3 图纸划成 **3×3 九宫格**——这是**理想布局**，不是
 - **射频/传感器/I/O 向右**（TR/MR/BR 列）—— 时序/数据从 MCU 发散
 - **大模块（pin > 50 或 bbox 一边 > 200）放在角落**（BL/BR/TR）—— 给中部留布线空间
 - **同一功能簇相邻**：晶振紧贴 MCU；去耦电容紧贴 IC 电源 pin（见 §6）；上拉电阻紧贴拉的那个 pin
+
+对于开发板等高密度单页系统，可把功能区组织成**边界对齐、相邻区共享边界的连续矩形网格**，避免每个小簇各画一个孤立方框。各功能区标题统一放在同一边和同一对齐位置（例如区块底部居中），并避开导线、网络标签和值/位号。网格是文档结构，不得为了填满格子而拆散一个完整功能模块。
+
+MCU/主控制器通常作为视觉和信号枢纽居中；若连接器机械位置、RF 板边要求、电源流向或更少交叉的网络拓扑要求不同位置，则这些实际约束优先。
 
 **现实偏移 (real-world overrides)**——下面几种情况优先于 3×3 理想：
 
@@ -92,10 +87,7 @@ buffer:
 
 ### 3.1 短桩 (pin lead-out)
 
-每个**需要接入 wire/netflag/netport/netlabel 的 pin** 都必须经非零长度 wire 引出
-（EasyEDA DRC 不认标识与 pin 坐标重叠为连接，见
-[`schematic.md` 的 EasyEDA Electrical Rules](./schematic.md#easyeda-electrical-rules-load-bearing)）。
-故意未使用的 pin 应显式 `sch no-connect`，不应为了满足短桩规则制造假连接。
+每个 pin **必须有非零长度 wire** 引出（EasyEDA DRC 不认重叠点为连接，见 [easyeda-agent SKILL.md](.././schematic.md#easyeda-electrical-rules)）。
 
 > **重要**：自动生成时严禁产出**零长度 wire 占位记录**（如 `{line:[620,60,620,60]}`）——实测 ESP32 reference 中 204 个 wire 里 149 个是这种零长占位，DRC 会逐个报错。Agent 在 emit wire 前必须 assert `(x1,y1) != (x2,y2)`。
 
@@ -145,23 +137,23 @@ EasyEDA 默认 lineWidth = 1。约定：
 
 **netflag / netport 的 rotation 规则**（已编码进 `schematic.power.connect_pin`）：
 
-引脚先用一小段 wire 引出到某个方向 `direction`，flag 放在 wire 末端，body 朝 `direction` 继续朝外。EasyEDA 的 stored rotation 把 body 按 **up → right → down → left** 每 +90° 循环。各类型 rot=0 时的 body 朝向：power=下、ground=上、net_port=右；这些是 `orientation.json` 的已校准视觉真值，与端点坐标的正负号独立。
+引脚先用一小段 wire 引出到某个方向 `direction`，flag 放在 wire 末端，body 朝 `direction` 继续朝外。EasyEDA 的 `createNetFlag` / `createNetPort` 的 rotation 把 body 按 **up → left → down → right** 每 +90° 循环（实测自 ESP32 reference：PWR rot=90 → body left；GND rot=270 → body left）。各类型 rot=0 时的 body 朝向：power=上、ground=下、net_port=右。
 
-> **整张表只由 4 个事实决定，单一真源不会漂移**：上面的循环顺序 + 三个 rot=0 锚点（power=下 / ground=上 / port=右）。这 4 个事实存放在本 skill 的 [`orientation.json`](./orientation.json)，由它**推导**出 12 项表——`connect_pin`（`extension/src/actions.ts` 的 `deriveBodyRotation()`）与 linter（`scripts/orient.py`）**推导同一张表**，二者不可能各写各的。校验由 `make lint-test`（`tests/run.py`）保证：① 结构上 `orientation.json` 必须推回自己的 `frozenTable`、循环律成立；② 锚点的活体 ground truth 由 [`calibrate.js`](../scripts/calibrate.js) 对 `getPrimitivesBBox` 中心偏移实测复核（导入新 .eext 后跑一次）。**永远不要手改那 12 个数字**——改锚点 / 循环后重跑 `tests/run.py --update`。
+> **整张表只由 4 个事实决定，单一真源不会漂移**：上面的循环顺序 + 三个 rot=0 锚点（power=上 / ground=下 / port=右）。这 4 个事实存放在本 skill 的 [`orientation.json`](./orientation.json)，由它**推导**出 12 项表——`connect_pin`（`extension/src/actions.ts` 的 `deriveBodyRotation()`）与 linter（`scripts/orient.py`）**推导同一张表**，二者不可能各写各的。校验由 `make lint-test`（`tests/run.py`）保证：① 结构上 `orientation.json` 必须推回自己的 `frozenTable`、循环律成立；② 锚点的活体 ground truth 由 [`calibrate.js`](../scripts/calibrate.js) 对 `getPrimitivesBBox` 中心偏移实测复核（导入新 .eext 后跑一次）。**永远不要手改那 12 个数字**——改锚点 / 循环后重跑 `tests/run.py --update`。
 
 > ⚠️ **createNetFlag / createNetPort 存储时取反**（2026-06 build）：传 `R` → 存储/渲染是 `(360-R)`。**坑**：建完**立即** `getState_Rotation()` 会回显 `R`（看着像恒等），**重新拉取**（`getAll`）才看到真正的取反值。`connect_pin` 已**运行时自探测并补偿**（`detectRotationNegation`），所以**经 connect_pin 传下表的值就能得到正确朝向**，对调用者透明;若直接调 raw `eda.createNetFlag`（debug.exec_js），需自己传取反值 `(360-表值)`。
 >
-> **坐标契约：原理图统一使用 y-UP。** `+y` 在画布上向上；`direction='up'` 使用 `endY = pinY + offset`，`direction='down'` 使用 `endY = pinY - offset`。`--direction` 表示视觉方向，并与坐标符号保持这一固定对应。2026-07-19 在 3.2.148(web) 用 `eda.sch_PrimitiveText.create` 双探针复核：y=700 位于 y=100 上方，且连接器 bbox 与原生 `getPrimitivesBBox` 完全同空间。
+> ⚠️ **坐标 y 轴方向是 build-dependent，端点几何按 y-DOWN 处理（EasyEDA Pro 3.2.121 实测，issue #19）**：在 3.2.121 上**较大的 y 在屏幕上更靠下**（y-DOWN）——报告者实测顶部引脚 `(525,320)`、底部引脚 `(560,540)`，底部引脚 y 更大，只有 y-DOWN 才自洽。因此 `schematic.power.connect_pin` 的 `direction='up'` 现在用 `endY = pinY - offset`（视觉向上），`'down'` 用 `endY = pinY + offset`（视觉向下）。**`--direction` 一律按"视觉方向"理解，不是坐标符号。**
 >
-> 历史 3.2.121 曾有相反坐标轴报告，但当前 CLI、连接器、块模板和约定均以已复测的 y-UP 为单一真值；不能为兼容未复现的旧构建再次局部翻转符号。若未来确认仍需兼容相反坐标轴的构建，应像 `detectRotationNegation` 一样在连接器边界加入运行时探测和统一坐标转换。**flag rotation 表不随本端点修正修改**：它按视觉方向索引，并由 `orientation.json` / `calibrate.js` 独立校准。
+> ⚠️ **历史校准曾记录 y-UP**（更早的 build：R2@y=250 在图纸底部、C1/C2@y=600 在顶部，且 ground rot0 的 bbox 偏移 dy=-14.5=向下）。EasyEDA 构建间会**静默翻转符号约定**（参见同节 createNetFlag 旋转取反的先例），y 轴方向亦然。**flag 旋转表(下表 12 项)不受影响**：它由 `calibrate.js` 对**实际渲染** bbox 校准、按**视觉方向**索引（`rotationFor('port','up')===90` 恰是报告者手动 workaround `--direction down --rotation 90` 用的值），修正端点符号后导线与 flag 朝向自动一致，**无需改那 12 个数字**。**合入前必须在已连接的 3.2.121 窗口跑一遍 `calibrate.js` / ESP32 端到端用例确认 y 轴方向**;若需同时兼容两类 build，应仿照 `detectRotationNegation` 加运行时 y 轴探测而非硬翻符号。
 >
 > ⛔ **走过的弯路（勿重蹈）**：取反是**真的**——实测 `connect_pin(direction=left)` 传 `90` → 存 `270` → 渲染**朝右**（0/180 上下对称，所以只有横向 flag 才暴露,藏了很久）。曾把这个取反当"误判"、撤掉 connect_pin 的补偿(commit `8aace7e`)，那次 **revert 才是 bug**;现已用运行时自探测重新锁死。**不要再据"恒等"撤补偿,除非先用 `connect_pin` 放个 left flag 肉眼确认朝向。** 校准方法：对 flag 调 `sch_Primitive.getPrimitivesBBox([pid])`，bbox 中心相对放置点 (x,y) 的偏移方向 = body 真实朝向（纯数据，不靠截图）。
 
 | kind | body 朝 `up` | `left` | `down` | `right` |
 |---|---|---|---|---|
-| power (`+3V3`/`+5V`/`VDD_*`) | **180°** | 90° | 0° | 270° |
-| ground (`GND`/`AGND`) | 0° | 270° | **180°** | 90° |
-| net_port (`IN`/`OUT`/`BI`) | 270° | 180° | 90° | **0°** |
+| power (`+3V3`/`+5V`/`VDD_*`) | **0°** | 90° | 180° | 270° |
+| ground (`GND`/`AGND`) | 180° | 270° | **0°** | 90° |
+| net_port (`IN`/`OUT`/`BI`) | 90° | 180° | 270° | **0°** |
 
 > 加粗的是各类型的**默认/最常见**朝向（power 朝上、ground 朝下、port 朝右）。**power/ground** 由 `calibrate.js` 对活体 bbox 实测验证（ceshi 10/10 通过）。**net_port 是箭头符号，bbox 中心读不出它的指向**——已用 **connect_pin 放置 + 肉眼确认**：`direction=right` 的 port 渲染出来确实朝右（朝外），所以 port 行也是对的；`calibrate.js` 对 port 报的 WARN 是 bbox 读不准导致的，**属正常、不是表的 bug**。其余未观测方向由同一条循环律从已验证锚点推导，构造上一致。必要时用 `schematic.power.connect_pin` 的 `rotation` 参数显式覆盖。
 
@@ -217,6 +209,8 @@ LED 也可用 `LED1` 这种语义化命名（兼容 `D1`），EasyEDA 不强制 
 
 每个数字 IC、模拟 IC、模块的 **VCC pin** 都应有去耦电容旁路到 GND。距离按**分级阈值**给出（pin XY → cap 中心 manhattan 距离）：
 
+绘制前先依据芯片数据手册和 PDN 要求建立“**电源 pin/电源域 → 去耦电容/滤波网络**”覆盖表，逐项确认 VDD、VDDA、VREF、RF、内核等电源域。不得只用“电容总数看起来够多”判断完整性；同一颗电容只有在其连接、回流和数据手册建议允许时，才可覆盖多个电源 pin。
+
 | 电源 pin 类别 | SHOULD ≤ | MUST ≤ |
 |---|---|---|
 | 高速 / RF / ADC 电源（`VDD_SPI`, `VDDA`, RF 模块 `VDD3P3`） | **30 units** | 60 units |
@@ -224,11 +218,11 @@ LED 也可用 `LED1` 这种语义化命名（兼容 `D1`），EasyEDA 不强制 
 | 储能 / bulk（10 μF 钽 / 陶） | 200 units | — |
 
 **电容选型**：
-- 高频去耦 = **0.1 μF (100 nF) 陶瓷**，**每个 VCC pin 一个**。
+- 高频去耦通常采用 **0.1 μF (100 nF) 陶瓷**；普通电源 pin 默认每 pin 一只，但最终数量、容值和滤波结构以数据手册、瞬态电流和 PDN 目标为准。
 - 模块电流 > 50 mA 时并联 **10 μF 钽 / 陶**（低频 / 储能），按 IC 而非按 pin 配置即可。
 - 多 VCC pin 的大芯片（ESP32-S3 有 VDDA×2 + VDD3P3_CPU + VDD_SPI + VDD3P3_RTC + VDD3P3×2 = 7 路）：**每路一只 0.1 μF**——实测 §8 reference 只配齐了 2 个，属于**已知欠去耦**。
 
-由 Skill 自动布线时，去耦电容应在元件 `place` 后立刻 place 在其 VCC pin 旁，按上表分级选择目标距离。
+由 Skill 自动布线时，去耦电容应在元件 `place` 后立刻 place 在其 VCC pin 旁，按上表分级选择目标距离，并在原理图检查结果中输出电源 pin/域覆盖缺口。
 
 > 阈值依据：ESP32 reference 9 个 big-IC VCC pin 的最近 cap 距离排序为 `[30, 50, 95, 105, 105, 165, 200, 215, 225]`，median 105。旧规则「≤30 units」对应 11% 达成率，明显不合实际；新分级让一般数字电源 SHOULD（≤60）达成率提升到 22%，MUST（≤120）覆盖 56%，同时保留高速 pin 的严格要求。
 
@@ -296,8 +290,7 @@ LED 也可用 `LED1` 这种语义化命名（兼容 `D1`），EasyEDA 不强制 
 3. **下笔**：从区中心格点开始，按 §2 间距规则放邻居。优先填 x 方向，超过区宽就换 y。
 4. **布线**：每个 pin 用 §3 短桩规则引出。电源 pin → netflag (power, 朝上)，地 pin → netflag (ground, 朝下)。**禁止 emit 零长 wire**。
 5. **去耦**：每个 IC 的 VCC pin 按 §6 分级阈值 place 0.1 μF——高速 / RF / ADC 走 SHOULD ≤30，一般数字电源走 SHOULD ≤60 / MUST ≤120。
-6. **验证**：逐页跑 `sch layout-lint --strict`、`sch drc`、`sch check --strict`、
-   `sch bridge-check`，再用 `sch read` 对照设计 spec 或改动前 pin→net 黄金表；任何一门失败都回到对应步骤修复。
+6. **验证**：跑 `schematic.drc.check`，违规返回参考区/间距规则定位修复。
 
 ## 10. 边界与开放问题
 
@@ -305,7 +298,6 @@ LED 也可用 `LED1` 这种语义化命名（兼容 `D1`），EasyEDA 不强制 
 - 对超大模块（pin > 100），九宫格容纳能力有限，可能要分多页（用 `schematic.pages.list` + `schematic.page.open`）。
 - 多页之间通过 `net_port` (`createNetPort('IN/OUT/BI')`) 在页间建立电气连接，net 名称相同视为同网。
 - `getCurrentRenderedAreaImage` **实测不可靠**：在后台标签 / 某些状态下它返回的是**缓存的旧渲染**——既不跟随 `zoomToSelectedPrimitives` / `zoomToRegion`，也可能不反映刚做的增删（实测：两次不同板面状态下截图逐字节相同、md5 一致）。用它做"改完截图确认"前，务必先确认它真的刷新了（例如截图前后做一处明显改动并比对像素）；否则改用纯数据校验（如 schematic-lint）或直接肉眼看 EasyEDA 界面。
-- ⚠️ **`schematic.page.rename` 改完立即 `doc ls` 会读到旧页名（issue #55）**：`modifySchematicPageName` 返回 `ok:true` 后，新名字**不会立刻**写进 `getAllSchematicPagesInfo()`（`schematic.pages.list` / `doc ls` 的数据源）——平台的页面元数据缓存要等某个**后续写操作**触发才刷新（`sch clear` 等任意无关动作会"顺便"刷到，造成"看似延迟生效"）。同属 `createNetFlag` 立即回显那一类平台异步陷阱。**连接器已内建写后自校验**：`page.rename` 成功后会短间隔重试读回 `getAllSchematicPagesInfo()` 确认新名生效，命中返回 `verified:true`；重试耗尽仍未同步返回 `verified:false` + `warning`。**确认重命名真的生效的可靠做法 = 看返回值的 `verified` 字段**（而不是紧接着 `doc ls`）；若拿到 `verified:false`，稍后重试或触发任意写操作后再 `doc ls`。
 - 目前两份 reference（§7 motobox、§8 ESP32S3R8N8）覆盖了「贴近 3×3 理想」与「RF MCU 占角 + 横向电源链」两种典型。若再采集到第三种（例如纯模拟前端、或多电源域工控板），应继续补充以避免 agent 过拟合到单一案例。
 
 ## 11. 图纸边界与标题栏 keep-out (sheet / title-block keep-out)
@@ -320,9 +312,8 @@ LED 也可用 `LED1` 这种语义化命名（兼容 `D1`），EasyEDA 不强制 
 1. **sheet bbox**（实测）：`schematic.components.list --include-bbox` 里 `componentType == "sheet"` 的图元。
 2. **模板识别**：用 sheet bbox 的**长宽比**匹配已知模板（A 系列横/纵向 ≈ √2）。公共 API 不暴露
    可靠的模板 id（deviceUuid / 符号名都拿不到），所以长宽比是识别键。
-3. **标题栏矩形**：按匹配模板的**归一化比例**在 sheet bbox 的**右下角**（y-UP 坐标空间中靠
-   **MaxX / MinY** 的角）切出子矩形。绘制矩形时 API 的左上锚点必须传 `(MinX, MaxY)`，高度向
-   `-y` 延伸；固定 zone 与 partition 共用这一语义。比例表见 [`sheet-templates.json`](./sheet-templates.json)（Go 表 `sheetTemplates` 为运行时权威，
+3. **标题栏矩形**：按匹配模板的**归一化比例**在 sheet bbox 的**右下角**（坐标空间中 x、y 都偏大的角）
+   切出子矩形。比例表见 [`sheet-templates.json`](./sheet-templates.json)（Go 表 `sheetTemplates` 为运行时权威，
    此 JSON 为人/skill 可读镜像，二者须保持同步）。
 4. **可见性**：`schematic.titleblock.get` 的 `showTitleBlock`；隐藏时**不**输出 keep-out。
 
