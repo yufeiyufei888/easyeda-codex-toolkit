@@ -11,7 +11,7 @@ operations. This skill owns tool usage; use `easyeda-quality-gates` for design
 quality, domain rules, read-only audit behavior, and acceptance criteria.
 
 This is an operation layer, not a circuit- or PCB-design encyclopedia. If no live
-EasyEDA access or action is required, route the task to `电子方案分析`,
+EasyEDA access or action is required, route the task to `hardware-architecture-analysis`,
 `schematic-design-review`, or `easyeda-pcb` instead.
 
 ## Step 1: Establish Context

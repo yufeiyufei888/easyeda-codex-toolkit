@@ -2,7 +2,7 @@
 
 面向嘉立创EDA（EasyEDA）硬件工作的 Codex 技能工具箱，覆盖电子方案、原理图、PCB、实时工程操作、质量验收、自动化维护与扩展 API。
 
-当前版本：**v3.0.0**
+当前版本：**v3.1.0**
 
 仓库状态：公开
 
@@ -11,11 +11,11 @@
 ## 一眼看懂
 
 ```text
-电子方案分析 → 原理图设计/审查 → PCB设计/审查
-                       │              │
-                       └── easyeda-agent：读取或执行当前工程操作
-                                      │
-                         easyeda-quality-gates：审计与最终验收
+hardware-architecture-analysis → schematic-design-review → easyeda-pcb
+                                      │                        │
+                                      └── easyeda-agent：读取或执行当前工程操作
+                                                               │
+                                          easyeda-quality-gates：审计与最终验收
 
 easyeda-agent-community-maintenance：安装、升级、连接故障与社区维护
 easyeda-api-skill：扩展开发、eda.* API 与 Bridge
@@ -27,7 +27,7 @@ V3 的核心是把职责拆清楚：设计技能负责工程判断，`easyeda-ag
 
 | Skill | 什么时候使用 | 不负责什么 |
 | --- | --- | --- |
-| [`电子方案分析`](skills/电子方案分析/) | 实体硬件需求、系统框图、电源树、接口预算、主控/关键器件初选、成本和风险 | 具体原理图、PCB Layout、纯软件项目 |
+| [`hardware-architecture-analysis`](skills/hardware-architecture-analysis/) | 实体硬件需求、系统框图、电源树、接口预算、主控/关键器件初选、成本和风险 | 具体原理图、PCB Layout、纯软件项目 |
 | [`schematic-design-review`](skills/schematic-design-review/) | 具体电路计算、器件外围、引脚/网络/NC、原理图设计与审查、转PCB前检查 | 产品总体架构、PCB布线 |
 | [`easyeda-pcb`](skills/easyeda-pcb/) | 板框、叠层、布局布线、回流、电源/热、高速、DRC、DFM和制造输出 | 原理图电路判断、客户端连接 |
 | [`easyeda-agent`](skills/easyeda-agent/) | 连接并识别当前EasyEDA工程，执行获准的读取、放置、连线、布局、布线、检查、保存和导出 | 安装升级、版本兼容和电路理论 |
@@ -35,11 +35,19 @@ V3 的核心是把职责拆清楚：设计技能负责工程判断，`easyeda-ag
 | [`easyeda-agent-community-maintenance`](skills/easyeda-agent-community-maintenance/) | 社区CLI/daemon/connector安装升级、版本或动作故障、插件市场差异、块库维护 | 普通工程设计与日常操作 |
 | [`easyeda-api-skill`](skills/easyeda-api-skill/) | `eda.*` API查询、扩展开发、源文档格式、库对象与WebSocket Bridge | 常规原理图/PCB工程判断 |
 
+## V3.1.0 更新
+
+- 将 `电子方案分析` 正式重命名为 `hardware-architecture-analysis`，目录名与 Skill 元数据同步使用英文 kebab-case。
+- 更新其他设计、操作和质量 Skills 的路由引用，以及安装命令和职责总览。
+- 本次只迁移名称，不改变原有硬件架构分析、选型、预算、风险和交接规则。
+
+旧安装目录 `电子方案分析` 不再作为独立 Skill 保留；升级时请改用新目录名。
+
 ## V3.0.0 更新
 
 - 新增 `easyeda-agent-community-maintenance`，将安装、升级、连接故障和社区块库维护从项目操作中独立出来。
 - 精简 `easyeda-agent`，明确它只承担当前工作区内的实时、可观察操作。
-- 更新 `电子方案分析`、`schematic-design-review` 和 `easyeda-pcb` 的触发边界，减少纯软件任务、笼统“设计/检查”或跨阶段问题的误触发。
+- 更新 `hardware-architecture-analysis`（当时名称为“电子方案分析”）、`schematic-design-review` 和 `easyeda-pcb` 的触发边界，减少纯软件任务、笼统“设计/检查”或跨阶段问题的误触发。
 - 更新经典项目、电源拓扑和常见电路参考；历史经验仅用于生成候选，最终结论必须回到准确料号、当前官方资料和实物约束。
 - 更新 `easyeda-quality-gates` 的路由关系，使设计判断、工具执行与验收证据相互独立。
 
@@ -47,7 +55,7 @@ V3 的核心是把职责拆清楚：设计技能负责工程判断，`easyeda-ag
 
 ## 推荐使用方式
 
-1. 还没有具体电路时，从 `电子方案分析` 开始。
+1. 还没有具体电路时，从 `hardware-architecture-analysis` 开始。
 2. 进入具体芯片、外围值和网络连接后，切换到 `schematic-design-review`。
 3. 原理图和封装闭环后，使用 `easyeda-pcb`。
 4. 需要读写当前嘉立创EDA工程时，再叠加工作区 `easyeda-agent`。
@@ -61,7 +69,7 @@ V3 的核心是把职责拆清楚：设计技能负责工程判断，`easyeda-ag
 按需复制，不必一次安装全部。用户级技能可放入：
 
 ```powershell
-Copy-Item -Recurse .\skills\电子方案分析 "$env:USERPROFILE\.codex\skills\电子方案分析"
+Copy-Item -Recurse .\skills\hardware-architecture-analysis "$env:USERPROFILE\.codex\skills\hardware-architecture-analysis"
 Copy-Item -Recurse .\skills\schematic-design-review "$env:USERPROFILE\.codex\skills\schematic-design-review"
 Copy-Item -Recurse .\skills\easyeda-pcb "$env:USERPROFILE\.codex\skills\easyeda-pcb"
 Copy-Item -Recurse .\skills\easyeda-quality-gates "$env:USERPROFILE\.codex\skills\easyeda-quality-gates"

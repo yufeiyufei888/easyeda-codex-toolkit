@@ -1,7 +1,7 @@
 ---
 name: easyeda-pcb
 description: >-
-  PCB布局、布线与制造审查。仅在任务明确涉及具体PCB、Layout、板框/机械约束、叠层、网络类与线宽间距、差分对/等长/阻抗、回流路径、电源完整性、铺铜、过孔、热设计、EMC、PCB DRC、DFM、Gerber或装配生产检查时使用，可适用于嘉立创EDA或其他EDA。不要因笼统的“设计规则”“检查”“DRC”触发；原理图电气问题和产品总体方案分别使用schematic-design-review与电子方案分析；若PCB位于当前打开的嘉立创EDA工程，本Skill继续负责PCB工程判断，并同时使用工作区easyeda-agent完成读取或获准修改。
+  PCB布局、布线与制造审查。仅在任务明确涉及具体PCB、Layout、板框/机械约束、叠层、网络类与线宽间距、差分对/等长/阻抗、回流路径、电源完整性、铺铜、过孔、热设计、EMC、PCB DRC、DFM、Gerber或装配生产检查时使用，可适用于嘉立创EDA或其他EDA。不要因笼统的“设计规则”“检查”“DRC”触发；原理图电气问题和产品总体方案分别使用schematic-design-review与hardware-architecture-analysis；若PCB位于当前打开的嘉立创EDA工程，本Skill继续负责PCB工程判断，并同时使用工作区easyeda-agent完成读取或获准修改。
 ---
 
 # PCB设计与审查
@@ -114,4 +114,4 @@ description: >-
 - DCDC功率级PCB：`references/dcdc-design-guide.md`
 - 完整PCB审查：`references/review-checklist.md`
 
-`references/component-selection-guide.md` 和 `references/pcb-fundamentals.md` 不默认加载；器件/电路选择交给 `电子方案分析` 或 `schematic-design-review`。参考文件中的固定数值、价格、免费打样和工期均须按当前板厂、项目叠层和日期重新核验。
+`references/component-selection-guide.md` 和 `references/pcb-fundamentals.md` 不默认加载；器件/电路选择交给 `hardware-architecture-analysis` 或 `schematic-design-review`。参考文件中的固定数值、价格、免费打样和工期均须按当前板厂、项目叠层和日期重新核验。

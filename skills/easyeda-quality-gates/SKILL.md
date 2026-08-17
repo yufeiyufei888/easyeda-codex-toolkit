@@ -12,7 +12,7 @@ library lookup, document access, and exports.
 
 Do not use this skill as a second design manual. Circuit design belongs to
 `schematic-design-review`, PCB engineering belongs to `easyeda-pcb`, and early
-hardware architecture belongs to `电子方案分析`. Load this skill alongside those
+hardware architecture belongs to `hardware-architecture-analysis`. Load this skill alongside those
 only when an EasyEDA source project needs an auditable acceptance loop.
 
 ## Route The Task

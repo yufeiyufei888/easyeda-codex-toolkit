@@ -11,7 +11,7 @@
 
 | 场景 | 首选技能 | 需要时组合 |
 | --- | --- | --- |
-| 实体硬件需求、选型、系统架构、电源树和资源预算 | `电子方案分析` | 形成具体电路后转原理图技能 |
+| 实体硬件需求、选型、系统架构、电源树和资源预算 | `hardware-architecture-analysis` | 形成具体电路后转原理图技能 |
 | 具体原理图设计、计算或审查 | `schematic-design-review` | 实时工程加 `easyeda-agent`；验收加 `easyeda-quality-gates` |
 | 具体PCB布局、布线、叠层、DRC或DFM | `easyeda-pcb` | 实时工程加 `easyeda-agent`；验收加 `easyeda-quality-gates` |
 | 当前EasyEDA工程的识别、读取、获准修改、检查、保存或导出 | 工作区 `easyeda-agent` | 电气判断加原理图/PCB技能；验收加质量门禁 |

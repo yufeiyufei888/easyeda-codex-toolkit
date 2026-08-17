@@ -1,5 +1,5 @@
 ---
-name: 电子方案分析
+name: hardware-architecture-analysis
 description: >-
   尚未进入具体原理图或PCB实施阶段的实体电子硬件、板卡或软硬件产品前期方案分析：把需求转化为可验证的硬件指标，规划系统框图、电源树、硬件接口与资源预算，完成MCU/SoC及关键器件初选、BOM成本、可行性和风险评估。仅当任务明确要求实体电路、芯片、板卡、传感器、执行器、电源或硬件通信链路的系统级方案/选型时隐式使用。纯Android/iOS/Web/桌面/后端软件任务不触发；只有用户同时要求设计、选型或变更实体硬件时，才分析BLE、Wi-Fi、USB、串口等链路的硬件侧，仅开发连接既有设备的App不触发。具体原理图、具体PCB工程和实时嘉立创EDA操作分别使用schematic-design-review、easyeda-pcb和工作区easyeda-agent。
 ---
