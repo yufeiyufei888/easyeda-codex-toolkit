@@ -23,6 +23,24 @@ easyeda-api-skill：扩展开发、eda.* API 与 Bridge
 
 V3 的核心是把职责拆清楚：设计技能负责工程判断，`easyeda-agent` 只负责当前项目的实时操作，`easyeda-quality-gates` 负责证据和验收，社区包的安装升级与故障排查由独立维护技能处理。
 
+## 技能关系图
+
+### 7 个 Skills：三层协作，不是七步串行
+
+七个技能按职责分成设计主线、项目协作层和工具支撑层。日常硬件任务先根据所处阶段选择一个设计 Skill；只有需要操作当前 EasyEDA 工程、建立验收证据或维护工具链时，才叠加相应的协作或支撑 Skill。
+
+[![7 个电子类 Skills 三层关系总览](docs/diagrams/easyeda-skills-overview.png)](docs/diagrams/easyeda-skills-overview.png)
+
+点击图片可查看或下载 1920×1080 原图。
+
+### 设计主线：三个阶段连续交付
+
+设计主线由 `hardware-architecture-analysis`、`schematic-design-review` 和 `easyeda-pcb` 组成。它们不是对同一问题重复检查，而是依次把产品需求转化为设计合同、闭环原理图与网表，再转化为经过验证的可制造 PCB 和生产数据。
+
+[![设计主线三个 Skills 的输入、核心工作、输出和交接门](docs/diagrams/easyeda-design-mainline.png)](docs/diagrams/easyeda-design-mainline.png)
+
+点击图片可查看或下载 1920×1080 原图。图中的“交接门”表示进入下一阶段前必须关闭的关键问题；它不代表仅凭 Skill 输出即可替代准确数据手册、EDA 原生检查、实板测试或生产验证。
+
 ## 技能目录
 
 | Skill | 什么时候使用 | 不负责什么 |
