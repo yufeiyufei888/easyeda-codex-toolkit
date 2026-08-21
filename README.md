@@ -34,10 +34,6 @@ easyeda-tooling：CLI / daemon / Connector / eda.* / Bridge
 
 七个技能按职责分成设计主线、项目协作层和工具支撑层。日常硬件任务先根据所处阶段选择一个设计 Skill；只有需要操作当前 EasyEDA 工程、建立验收证据或维护工具链时，才叠加相应的协作或支撑 Skill。
 
-[![7 个电子类 Skills 三层关系总览](docs/diagrams/easyeda-skills-overview.png)](docs/diagrams/easyeda-skills-overview.png)
-
-点击图片可查看或下载 1920×1080 原图。
-
 ### 设计主线：三个阶段连续交付
 
 设计主线由 `hardware-architecture-analysis`、`schematic-design-review` 和 `easyeda-pcb` 组成。它们不是对同一问题重复检查，而是依次把产品需求转化为设计合同、闭环原理图与网表，再转化为经过验证的可制造 PCB 和生产数据。
