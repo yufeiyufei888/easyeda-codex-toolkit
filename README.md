@@ -1,31 +1,36 @@
-# EasyEDA Codex Toolkit
+# Electronic Design Skills Toolkit
 
-面向嘉立创EDA（EasyEDA）硬件工作的 Codex 技能工具箱，覆盖电子方案、原理图、PCB、实时工程操作、质量验收、自动化维护与扩展 API。
+面向嘉立创EDA（EasyEDA）硬件工作的电子设计 Skills 工具箱，覆盖硬件架构、原理图、PCB、当前工程操作、质量门以及 CLI/daemon/Connector/API 工具能力。
 
-当前版本：**v3.1.0**
+当前版本：**v1.1.1 路由图 / v3.1.0 技能包**
 
 仓库状态：公开
 
 定位：工作流、审查规则与操作参考；不是嘉立创EDA官方产品，也不替代数据手册、板厂规则或实板验证。
 
-## 一眼看懂
+## 一眼看懂：v1.1.1 的 5 个活动入口
 
 ```text
-hardware-architecture-analysis → schematic-design-review → easyeda-pcb
-                                      │                        │
-                                      └── easyeda-agent：读取或执行当前工程操作
-                                                               │
-                                          easyeda-quality-gates：审计与最终验收
+hardware-architecture → schematic-design → pcb-layout
+          │                    │                 │
+          └──────────────→ easyeda-project ←─────┘
+                                  ▲
+                                  │ 当前工程操作 / 质量门
 
-easyeda-agent-community-maintenance：安装、升级、连接故障与社区维护
-easyeda-api-skill：扩展开发、eda.* API 与 Bridge
+easyeda-tooling：CLI / daemon / Connector / eda.* / Bridge
 ```
 
-V3 的核心是把职责拆清楚：设计技能负责工程判断，`easyeda-agent` 只负责当前项目的实时操作，`easyeda-quality-gates` 负责证据和验收，社区包的安装升级与故障排查由独立维护技能处理。
+新版路由把设计判断和工程工具分开：前三项沿需求、原理图、PCB 的设计链推进；`easyeda-project` 负责当前工程的连接、读取、授权修改、保存、导出和质量门模式；`easyeda-tooling` 负责 CLI、daemon、Connector、`eda.*` API、Bridge 与源格式开发，不替代设计判断。
 
-## 技能关系图
+[![电子设计 Skills v1.1.1 五个活动入口结构图](docs/diagrams/electronic-design-skills-v111.png)](docs/diagrams/electronic-design-skills-v111.png)
 
-### 7 个 Skills：三层协作，不是七步串行
+点击图片可查看或下载 1920×1080 原图。图中的箭头表示任务路由和交接关系，不代表仅凭 Skill 输出即可替代数据手册、EDA 原生检查、实板测试或生产验证。
+
+当前仓库中的技能目录仍保留 v3 历史名称，便于兼容和迁移；v1.1.1 的目录迁移应在对应技能内容完成核对后再单独提交。
+
+## 现有技能关系图
+
+### 7 个历史 Skills：三层协作，不是七步串行
 
 七个技能按职责分成设计主线、项目协作层和工具支撑层。日常硬件任务先根据所处阶段选择一个设计 Skill；只有需要操作当前 EasyEDA 工程、建立验收证据或维护工具链时，才叠加相应的协作或支撑 Skill。
 
